@@ -169,18 +169,24 @@
   }
 
   let imageOptions = [
-    {file: 'boat_1.jpeg', class: 'lifeboat'},
-    {file: 'bug_1.jpeg', class: 'ladybug'},
-    {file: 'pizza_1.jpeg', class: 'pizza'},
-    {file: 'pepper_1.jpeg', class: 'bell pepper'},
-    {file: 'bus_1.jpeg', class: 'bus'},
-    {file: 'koala_1.jpeg', class: 'koala'},
-    {file: 'espresso_1.jpeg', class: 'espresso'},
-    {file: 'panda_1.jpeg', class: 'red panda'},
-    {file: 'orange_1.jpeg', class: 'orange'},
-    {file: 'car_1.jpeg', class: 'sport car'}
+    {file: 'mnist_0.jpeg', class: '0'},
+    {file: 'mnist_1.jpeg', class: '1'},
+    {file: 'mnist_2.jpeg', class: '2'},
+    {file: 'mnist_3.jpeg', class: '3'},
+    {file: 'mnist_4.jpeg', class: '4'},
+    {file: 'mnist_5.jpeg', class: '5'},
+    {file: 'mnist_6.jpeg', class: '6'},
+    {file: 'mnist_7.jpeg', class: '7'},
+    {file: 'mnist_8.jpeg', class: '8'},
+    {file: 'mnist_9.jpeg', class: '9'},
+    {file: 'mnist_amb1.jpeg', class: 'ambiguous 7 (splits 2 / 1)'},
+    {file: 'mnist_amb2.jpeg', class: 'ambiguous 4 (splits 4 / 3)'},
+    {file: 'mnist_amb3.jpeg', class: 'ambiguous 7 (splits 2 / 8)'},
+    {file: 'mnist_amb4.jpeg', class: 'ambiguous 1 (splits 7 / 8)'},
+    {file: 'mnist_amb5.jpeg', class: 'ambiguous 1 (splits 1 / 8)'},
+    {file: 'mnist_amb6.jpeg', class: 'ambiguous 4 (splits 4 / 8)'}
   ];
-  let selectedImage = imageOptions[6].file;
+  let selectedImage = imageOptions[0].file;
 
   let nodeData;
   let selectedNodeIndex = -1;
@@ -1114,7 +1120,7 @@
       .attr("d", "M-5,-10L10,0L-5,10");
     
     console.time('Construct cnn');
-    model = await loadTrainedModel('PUBLIC_URL/assets/data/model.json');
+    model = await loadTrainedModel('PUBLIC_URL/assets/data/model.json?v=mnist1');
     cnn = await constructCNN(`PUBLIC_URL/assets/img/${selectedImage}`, model);
     console.timeEnd('Construct cnn');
     cnnStore.set(cnn);

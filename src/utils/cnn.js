@@ -304,13 +304,24 @@ const getInputImageArray = (imgFile) => {
  * @param {int} padding Padding size
  */
 export const singleConv = (input, kernel, stride=1, padding=0) => {
-  // TODO: implement padding
-
   // Only support square input and kernel
   console.assert(input.length === input[0].length,
      'Conv input is not square');
   console.assert(kernel.length === kernel[0].length,
     'Conv kernel is not square');
+
+  // Zero-pad the input by `padding` cells on every side. With padding = 0 this
+  // is a no-op (valid conv); padding = (kernel - 1) / 2 gives `same` conv.
+  if (padding > 0) {
+    let paddedLength = input.length + 2 * padding;
+    let paddedInput = init2DArray(paddedLength, paddedLength, 0);
+    for (let r = 0; r < input.length; r++) {
+      for (let c = 0; c < input.length; c++) {
+        paddedInput[r + padding][c + padding] = input[r][c];
+      }
+    }
+    input = paddedInput;
+  }
 
   let stepSize = (input.length - kernel.length) / stride + 1;
 

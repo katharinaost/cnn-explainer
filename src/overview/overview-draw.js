@@ -680,39 +680,14 @@ export const drawCNN = (width, height, cnnGroup, nodeMouseOverHandler,
   let inputAnnotation = cnnGroup.append('g')
     .attr('class', 'input-annotation');
 
-  let redChannel = inputAnnotation.append('text')
+  // MNIST input has a single grayscale channel.
+  inputAnnotation.append('text')
     .attr('x', nodeCoordinate[0][0].x + nodeLength / 2)
     .attr('y', nodeCoordinate[0][0].y + nodeLength + 5)
     .attr('class', 'annotation-text')
     .style('dominant-baseline', 'hanging')
-    .style('text-anchor', 'middle');
-  
-  redChannel.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .style('fill', '#C95E67')
-    .text('Red');
-  
-  redChannel.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .text(' channel');
-
-  inputAnnotation.append('text')
-    .attr('x', nodeCoordinate[0][1].x + nodeLength / 2)
-    .attr('y', nodeCoordinate[0][1].y + nodeLength + 5)
-    .attr('class', 'annotation-text')
-    .style('dominant-baseline', 'hanging')
     .style('text-anchor', 'middle')
-    .style('fill', '#3DB665')
-    .text('Green');
-
-  inputAnnotation.append('text')
-    .attr('x', nodeCoordinate[0][2].x + nodeLength / 2)
-    .attr('y', nodeCoordinate[0][2].y + nodeLength + 5)
-    .attr('class', 'annotation-text')
-    .style('dominant-baseline', 'hanging')
-    .style('text-anchor', 'middle')
-    .style('fill', '#3F7FBC')
-    .text('Blue');
+    .text('Grayscale');
 }
 
 /**

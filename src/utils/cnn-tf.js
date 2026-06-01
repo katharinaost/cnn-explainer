@@ -1,7 +1,7 @@
 /* global tf */
 
-// Network input image size
-const networkInputSize = 64;
+// Network input image size (MNIST: 28x28)
+const networkInputSize = 28;
 
 // Enum of node types
 const nodeType = {
@@ -309,10 +309,10 @@ const cropCentralSquare = (arr) => {
  * @param {int} height Canvas image height
  */
 const imageDataTo3DTensor = (imageData, width, height, normalize=true) => {
-  // Create array placeholder for the 3d array
-  let imageArray = tf.fill([width, height, 3], 0).arraySync();
+  // The MNIST model expects a single grayscale channel.
+  let imageArray = tf.fill([width, height, 1], 0).arraySync();
 
-  // Iterate through the data to fill out channel arrays above
+  // Iterate through the data to fill out the single channel array above
   for (let i = 0; i < imageData.length; i++) {
     let pixelIndex = Math.floor(i / 4),
       channelIndex = i % 4,
@@ -320,14 +320,15 @@ const imageDataTo3DTensor = (imageData, width, height, normalize=true) => {
                               : pixelIndex % width,
       column = width === height ? pixelIndex % width
                               : Math.floor(pixelIndex / width);
-    
-    if (channelIndex < 3) {
+
+    // Use only the red channel: MNIST JPEGs are grayscale (R == G == B).
+    if (channelIndex === 0) {
       let curEntry  = imageData[i];
       // Normalize the original pixel value from [0, 255] to [0, 1]
       if (normalize) {
         curEntry /= 255;
       }
-      imageArray[row][column][channelIndex] = curEntry;
+      imageArray[row][column][0] = curEntry;
     }
   }
 

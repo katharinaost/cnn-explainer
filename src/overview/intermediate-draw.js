@@ -506,7 +506,11 @@ const drawIntermediateLayer = (curLayerIndex, leftX, rightX, rightStart,
     // Compute the intermediate value
     let inputMatrix = cnn[curLayerIndex - 1][ni].output;
     let kernelMatrix = cnn[curLayerIndex][i].inputLinks[ni].weight;
-    let interMatrix = singleConv(inputMatrix, kernelMatrix);
+    // This model uses `same` padding (stride 1), so the conv output keeps the
+    // input's spatial size. Pad by (kernel - 1) / 2 so interMatrix matches
+    // d.output and the heatmap draw doesn't index past its rows.
+    let convPadding = Math.floor((kernelMatrix.length - 1) / 2);
+    let interMatrix = singleConv(inputMatrix, kernelMatrix, 1, convPadding);
 
     // Compute the intermediate layer min max
     intermediateMinMax.push(getExtent(interMatrix));
@@ -844,6 +848,13 @@ const drawIntermediateLayerAnnotation = (arg) => {
     isFirstConv = arg.isFirstConv,
     i = arg.i;
 
+  // The original (RGB) model always had >= 3 input channels; our grayscale
+  // input has only one. The "each input channel gets a different kernel"
+  // annotation references channels [1]/[2] and is meaningless with a single
+  // channel, so we skip it when there's only one previous-layer channel.
+  let inputChannelCount = nodeCoordinate[curLayerIndex - 1].length;
+  let hasMultipleInputChannels = inputChannelCount > 1;
+
   let kernelAnnotation = group.append('g')
     .attr('class', 'kernel-annotation');
   
@@ -867,14 +878,16 @@ const drawIntermediateLayerAnnotation = (arg) => {
       kernelRectLength * 3 + 5;
     dr = 20;
 
-    sliderX2 = leftX;
+    if (hasMultipleInputChannels) {
+      sliderX2 = leftX;
       sliderY2 = nodeCoordinate[curLayerIndex - 1][1].y + nodeLength +
-    kernelRectLength * 3;
-    arrowSX2 = leftX - kernelRectLength * 3;
-    arrowSY2 = nodeCoordinate[curLayerIndex - 1][1].y + nodeLength + 15;
-    arrowTX2 = leftX - 13;
-    arrowTY2 =  nodeCoordinate[curLayerIndex - 1][1].y + 15;
-    dr2 = 35;
+        kernelRectLength * 3;
+      arrowSX2 = leftX - kernelRectLength * 3;
+      arrowSY2 = nodeCoordinate[curLayerIndex - 1][1].y + nodeLength + 15;
+      arrowTX2 = leftX - 13;
+      arrowTY2 =  nodeCoordinate[curLayerIndex - 1][1].y + 15;
+      dr2 = 35;
+    }
   } else {
     sliderX = leftX - 3 * kernelRectLength * 3;
     sliderY = nodeCoordinate[curLayerIndex - 1][0].y + nodeLength / 3;
@@ -937,46 +950,48 @@ const drawIntermediateLayerAnnotation = (arg) => {
     marker: 'marker'
   });
 
-  // Add kernel annotation
-  let slideText2 = kernelAnnotation.append('text')
-    .attr('x', sliderX2)
-    .attr('y', sliderY2)
-    .attr('class', 'annotation-text')
-    .style('dominant-baseline', 'hanging')
-    .style('text-anchor', isFirstConv ? 'start' : 'end');
+  // Add kernel annotation (only meaningful with more than one input channel)
+  if (hasMultipleInputChannels) {
+    let slideText2 = kernelAnnotation.append('text')
+      .attr('x', sliderX2)
+      .attr('y', sliderY2)
+      .attr('class', 'annotation-text')
+      .style('dominant-baseline', 'hanging')
+      .style('text-anchor', isFirstConv ? 'start' : 'end');
 
-  slideText2.append('tspan')
-    .style('dominant-baseline', 'hanging')
-    .text('Each input chanel');
+    slideText2.append('tspan')
+      .style('dominant-baseline', 'hanging')
+      .text('Each input chanel');
 
-  slideText2.append('tspan')
-    .attr('x', sliderX)
-    .attr('dy', '1em')
-    .style('dominant-baseline', 'hanging')
-    .text('gets a different kernel');
+    slideText2.append('tspan')
+      .attr('x', sliderX)
+      .attr('dy', '1em')
+      .style('dominant-baseline', 'hanging')
+      .text('gets a different kernel');
 
-  slideText2.append('tspan')
-    .attr('x', sliderX)
-    .attr('dy', '1.3em')
-    .style('font-weight', 700)
-    .style('dominant-baseline', 'hanging')
-    .text('Hover over ');
+    slideText2.append('tspan')
+      .attr('x', sliderX)
+      .attr('dy', '1.3em')
+      .style('font-weight', 700)
+      .style('dominant-baseline', 'hanging')
+      .text('Hover over ');
 
-  slideText2.append('tspan')
-    .style('font-weight', 400)
-    .style('dominant-baseline', 'hanging')
-    .text('to see value!')
+    slideText2.append('tspan')
+      .style('font-weight', 400)
+      .style('dominant-baseline', 'hanging')
+      .text('to see value!')
 
-  drawArrow({
-    group: group,
-    tx: arrowTX2,
-    ty: arrowTY2,
-    sx: arrowSX2,
-    sy: arrowSY2,
-    dr: dr2,
-    hFlip: !isFirstConv,
-    marker: 'marker'
-  });
+    drawArrow({
+      group: group,
+      tx: arrowTX2,
+      ty: arrowTY2,
+      sx: arrowSX2,
+      sy: arrowSY2,
+      dr: dr2,
+      hFlip: !isFirstConv,
+      marker: 'marker'
+    });
+  }
 
 
   // Add annotation for the sum operation
@@ -1292,8 +1307,11 @@ export const drawConv1 = (curLayerIndex, d, i, width, height,
     minMax: finalMinMax,
     group: intermediateLayer,
     width: 2 * nodeLength + intermediateGap,
-    x: nodeCoordinate[curLayerIndex - 1][2].x,
-    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap + 
+    // Original RGB model indexed the 3rd (blue) input channel; clamp to the
+    // last available channel so a single grayscale input doesn't break.
+    x: nodeCoordinate[curLayerIndex - 1][
+      Math.min(2, nodeCoordinate[curLayerIndex - 1].length - 1)].x,
+    y: svgPaddings.top + vSpaceAroundGap * (10) + vSpaceAroundGap +
       nodeLength * 10
   });
 

@@ -8,6 +8,9 @@
   export let stride = undefined;
   export let colorScale = d3.interpolateRdBu;
   export let isInputLayer = false;
+  // Number of zero-padding cells around the data (for `same` conv). When > 0,
+  // the outer `padding`-wide ring is tinted to read as padding, not real data.
+  export let padding = 0;
 
   import { onMount } from 'svelte';
   import { onDestroy } from 'svelte';
@@ -17,7 +20,16 @@
   let grid_final;
   const textConstraintDivisor = 2.6;
   const standardCellColor = "ddd";
+  const paddingFill = "#f4e8d0";    // warm tan tint, distinct from the RdBu map
+  const paddingStroke = "#caa45a";  // amber border for the padding ring
   const dispatch = createEventDispatcher();
+
+  const isPaddingCell = (d) => padding > 0 &&
+    (d.row < padding || d.col < padding ||
+     d.row >= data.length - padding || d.col >= data.length - padding);
+
+  const isHighlighted = (d) => isKernelMath ||
+    (highlights.length && highlights[d.row * data.length + d.col]);
 
   let oldHighlight = highlights;
   let oldData = data;
@@ -43,8 +55,9 @@
       .attr("y", function(d) { return d.y; })
       .attr("width", function(d) { return d.width; })
       .attr("height", function(d) { return d.height; })
-      .style("opacity", 0.8)
+      .style("opacity", function(d) { return isPaddingCell(d) ? 0.55 : 0.8; })
       .style("fill", function(d) {
+        if (isPaddingCell(d)) { return paddingFill; }
         let normalizedValue = d.text;
         if (isInputLayer){
           normalizedValue = 1 - d.text;
@@ -52,6 +65,12 @@
           normalizedValue = (d.text + dataRange / 2) / dataRange;
         }
         return colorScale(normalizedValue);
+      })
+      .style("stroke", function(d) {
+        return (!isHighlighted(d) && isPaddingCell(d)) ? paddingStroke : null;
+      })
+      .style("stroke-dasharray", function(d) {
+        return (!isHighlighted(d) && isPaddingCell(d)) ? "2,1" : null;
       })
       .on('mouseover', function(d) {
         if (data.length != outputLength) {
@@ -104,7 +123,10 @@
     if (highlights != oldHighlight) {
       var grid = d3.select(grid_final).select('#grid').select("svg")
       grid.selectAll(".square")
-        .style("stroke", (d) => isKernelMath || (highlights.length && highlights[d.row * data.length + d.col]) ? "black" : null )
+        .style("stroke", (d) => isHighlighted(d) ? "black"
+          : (isPaddingCell(d) ? paddingStroke : null))
+        .style("stroke-dasharray", (d) =>
+          (!isHighlighted(d) && isPaddingCell(d)) ? "2,1" : null)
       oldHighlight = highlights;
     }
 

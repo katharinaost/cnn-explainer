@@ -15,10 +15,33 @@
 	let stride = 1;
   const dilation = 1;
   var isPaused = false;
-  var outputFinal = singleConv(input, kernel, stride);
+
+  // This model uses `same` padding (stride 1), so a conv keeps the input's
+  // spatial size (e.g. 28x28 -> 28x28). The ConvolutionAnimator expects a
+  // *pre-padded* input (its internal padding is 0), so we zero-pad the input by
+  // (kernel - 1) / 2 here. Without this the animator would slide an unpadded
+  // `valid` convolution and show a smaller output (28 -> 26), contradicting the
+  // (28,28) -> (28,28) maps in the network diagram. The padding border is shown
+  // as the outer ring of zero-valued cells on the Input matrix.
+  function padMatrix(matrix, pad) {
+    if (pad <= 0) { return matrix; }
+    let size = matrix.length + 2 * pad;
+    let padded = [];
+    for (let r = 0; r < size; r++) { padded.push(new Array(size).fill(0)); }
+    for (let r = 0; r < matrix.length; r++) {
+      for (let c = 0; c < matrix[r].length; c++) {
+        padded[r + pad][c + pad] = matrix[r][c];
+      }
+    }
+    return padded;
+  }
+
+  const convPadding = Math.floor((kernel.length - 1) / 2);
+  $: paddedInput = padMatrix(input, convPadding);
+  var outputFinal = singleConv(padMatrix(input, convPadding), kernel, stride);
   $: if (stride > 0) {
-    try { 
-      outputFinal = singleConv(input, kernel, stride);
+    try {
+      outputFinal = singleConv(paddedInput, kernel, stride);
     } catch {
       console.log("Cannot handle stride of " + stride);
     }
@@ -152,11 +175,11 @@
       </div>
 
       <div class="container is-centered">
-        <ConvolutionAnimator on:message={handlePauseFromInteraction} 
-          kernel={kernel} image={input} output={outputFinal} 
+        <ConvolutionAnimator on:message={handlePauseFromInteraction}
+          kernel={kernel} image={paddedInput} output={outputFinal}
           stride={stride} dilation={dilation} isPaused={isPaused}
           dataRange={dataRange} colorScale={colorScale}
-          isInputInputLayer={isInputInputLayer} />
+          isInputInputLayer={isInputInputLayer} inputPadding={convPadding} />
       </div>
 
       <div class="annotation">
